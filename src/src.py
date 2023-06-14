@@ -7,6 +7,7 @@ import tempfile
 import hashlib # md5, sha1, sha224, sha256, sha384, sha512
 from resources.structures import RequestErrorException, \
                                  SavingErrorException, \
+                                 ReadingErrorException, \
                                  ArticleInfo, \
                                  ROOT_DIR, \
                                  conf_last_parsing_dt_filename,\
@@ -33,13 +34,14 @@ def get_article_info(href: str) -> str:
     return r.text
 
 
-def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
+def save_to_disk_old(article: ArticleInfo = None, file_name: str = '') -> None:
     try:
         if not article:
             raise SavingErrorException(f'File_name: {file_name}\nReason: Empty article')
         if not file_name:
-            file_name = f'{hashlib.sha256(f"{article.href}".encode()).hexdigest()}.xz'
+            file_name = f'{hashlib.sha256(f"{article.href}".encode()).hexdigest()}_old.xz'
         if os.path.isfile(file_name):
+            logger.warning(f'File {file_name} already exists')
             return
         with tempfile.TemporaryDirectory() as temp_dir:
             with open(os.path.join(temp_dir, 'article.html'), 'wb') as f:
@@ -54,6 +56,69 @@ def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
                 zpf.write(os.path.join(temp_dir, 'article.json'), 'article.json')
     except Exception as e:
         raise SavingErrorException(f'File_name: {file_name}\nArticle: {article._asdict()}')
+
+
+def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
+    try:
+        if not article:
+            raise SavingErrorException(f'File_name: {file_name}\nReason: Empty article')
+        if not file_name:
+            file_name = f'{hashlib.sha256(f"{article.href}".encode()).hexdigest()}.xz'
+        if os.path.isfile(file_name):
+            logger.warning(f'File {file_name} already exists')
+            return
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(os.path.join(temp_dir, 'article.html'), 'wb') as f:
+                f.write(bytes(article.html, 'utf-8'))
+            json_obj = article._asdict()
+            json_obj['publication_dt'] = json_obj['publication_dt'].isoformat()
+            json_obj['parsing_dt'] = json_obj['parsing_dt'].isoformat()
+            with open(os.path.join(temp_dir, 'article.json'), "wb") as f:
+                f.write(bytes(json.dumps(json_obj, indent=4), 'utf-8'))
+            with zipfile.ZipFile(os.path.join(temp_dir, file_name), "w") as zpf:
+                zpf.write(os.path.join(temp_dir, 'article.html'), 'article.html')
+                zpf.write(os.path.join(temp_dir, 'article.json'), 'article.json')
+            with open(os.path.join(temp_dir, file_name), "rb") as arch, \
+                 open(os.path.join(ROOT_DIR, file_name), "wb") as lzout:
+                lzout.write(lzma.compress(arch.read()))
+    except Exception as e:
+        raise SavingErrorException(f'File_name: {file_name}\nArticle: {article._asdict()}', parent=e)
+
+
+def decompress_archive(file_name):
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(os.path.join(ROOT_DIR, file_name), 'rb') as compressed,\
+                open(os.path.join(temp_dir, file_name), 'wb') as decompressed:
+                decompressed.write(lzma.decompress(compressed.read()))
+            with zipfile.ZipFile(os.path.join(temp_dir, file_name), "r") as fp:
+                with open(os.path.join(ROOT_DIR, f'{file_name[:-3]}_article.html'), 'wb') as html_file, \
+                    open(os.path.join(ROOT_DIR, f'{file_name[:-3]}_article.json'), 'wb') as json_file:
+                    html_file.write(fp.read('article.html'))
+                    json_file.write(fp.read('article.json'))
+    except Exception as e:
+        raise ReadingErrorException(f'Decompress error\nFile_name: {file_name}', parent=e)
+
+
+def read_from_disk(file_name: str = '') -> ArticleInfo:
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(os.path.join(ROOT_DIR, file_name), 'rb') as compressed, \
+                    open(os.path.join(temp_dir, file_name), 'wb') as decompressed:
+                decompressed.write(lzma.decompress(compressed.read()))
+            with zipfile.ZipFile(os.path.join(temp_dir, file_name), "r") as fp:
+                jsn = json.loads(fp.read('article.json').decode('utf8'))
+                return ArticleInfo(
+                    header=jsn['header'],
+                    content=jsn['content'],
+                    publication_dt=datetime.fromisoformat(jsn['publication_dt']),
+                    parsing_dt=datetime.fromisoformat(jsn['parsing_dt']),
+                    html=jsn['html'],
+                    href=jsn['href'],
+                    language=jsn['language']
+                )
+    except Exception as e:
+        raise ReadingErrorException(f'Read from file error\nFile_name: {file_name}', parent=e)
 
 
 def get_last_pars_dt() -> datetime:

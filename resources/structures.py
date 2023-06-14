@@ -71,8 +71,22 @@ class SavingErrorException(Exception):
         message -- explanation of the error
     """
 
-    def __init__(self, message: str = "Some parsing error", parent: Exception = None):
+    def __init__(self, message: str = "Some saving error", parent: Exception = None):
         self.message = message
         self.parent = parent
         logger.error(f'SavingErrorException\n{message}\n{parent}')
+        super().__init__(self.message)
+
+
+class ReadingErrorException(Exception):
+    """Exception raised for errors in reading from file.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message: str = "Some reading error", parent: Exception = None):
+        self.message = message
+        self.parent = parent
+        logger.error(f'ReadingErrorException\n{message}\n{parent}')
         super().__init__(self.message)

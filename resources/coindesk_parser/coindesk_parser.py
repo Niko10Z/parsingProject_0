@@ -1,5 +1,5 @@
-from resources.structures import ArticleShortInfo, ArticleInfo, ParsingErrorException
-from .src import get_article_info
+from src.core import ArticleShortInfo, ArticleInfo, ParsingErrorException
+from src import get_article_info
 from datetime import datetime
 from typing import List
 from bs4 import BeautifulSoup
@@ -7,7 +7,7 @@ import feedparser
 from time import mktime
 
 
-def parse_coindeskcom_news_page(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
+def parse_news_page(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
     page_html = get_article_info(f'https://www.coindesk.com/tag/{news_tag}/{num_page}')
     try:
         soup = BeautifulSoup(page_html, "html.parser")
@@ -36,7 +36,7 @@ def parse_coindeskcom_news_page(news_tag: str, num_page: int) -> List[ArticleSho
     return news_list
 
 
-def get_coindeskcom_articles_from_rss(from_dt: datetime=datetime.now(), to_dt: datetime=None) -> List[ArticleShortInfo]:
+def get_articles_from_rss(from_dt: datetime=datetime.now(), to_dt: datetime=None) -> List[ArticleShortInfo]:
     try:
         # TODO почему не радотает rss_parser
         # rss = Parser.parse(xml_data)
@@ -61,7 +61,7 @@ def get_coindeskcom_articles_from_rss(from_dt: datetime=datetime.now(), to_dt: d
     return news_list
 
 
-def get_all_articles_coindeskcom(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
+def get_all_articles_by_time(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     web3_tags = [
         'yuga-labs',
         'nfts',
@@ -107,7 +107,7 @@ def get_all_articles_coindeskcom(from_dt: datetime, to_dt: datetime) -> List[Art
     return articles_list
 
 
-def parse_article_coindeskcom(href: str) -> ArticleInfo:
+def parse_article(href: str) -> ArticleInfo:
     html_info = get_article_info(href)
     # content_classes = [
     #     'common-textstyles__StyledWrapper-sc-18pd49k-0 eSbCkN',

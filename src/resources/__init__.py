@@ -1,0 +1,2 @@
+import coindesk_parser
+import cointelegraph_parser

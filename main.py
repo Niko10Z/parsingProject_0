@@ -1,9 +1,8 @@
-from resources import coindesk_parser
-from src.main import get_last_pars_dt, \
+from src.const import ROOT_DIR, conf_log_filename
+from src.resources import coindesk_parser
+from src.core.local_storage import get_last_pars_dt, \
                     set_last_pars_dt, \
-                    save_to_disk, \
-                    read_from_disk, \
-                    decompress_archive
+                    save_to_disk
 from datetime import datetime
 import os
 import logging
@@ -19,14 +18,12 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     news_list = []
-    # news_list = get_all_articles_coindeskcom(datetime(2023, 6, 7, 23, 59), datetime(2023, 6, 5, 0, 0))
+    # news_list = coindesk_parser.get_all_links(datetime(2023, 6, 7, 23, 59), datetime(2023, 6, 5, 0, 0))
     last_pars_time = get_last_pars_dt()
-    # news_list = get_coindeskcom_articles_from_rss(from_dt=datetime.now(), to_dt=last_pars_time)
-    # news_list = get_coindeskcom_articles_from_rss(from_dt=datetime.now())
+    # news_list = coindesk_parser.get_rss_links(from_dt=datetime.now(), to_dt=last_pars_time)
+    news_list = coindesk_parser.get_rss_links(from_dt=datetime.now())
     for item in news_list:
-        if item.link.find('/video/') != -1:
-            continue
-        tmp_article = coindesk_parser.parse_article(item.link)
+        tmp_article = coindesk_parser.get_article_info(item.link)
         if not tmp_article:
             continue
         save_to_disk(tmp_article)

@@ -1,7 +1,5 @@
-from .article_info import ArticleInfo
-from .article_short_info import ArticleShortInfo
-from .custom_exceptions import RequestErrorException, \
-                               ParsingErrorException, \
-                               SavingErrorException, \
-                               ReadingErrorException
-from .const import ROOT_DIR, conf_log_filename, conf_last_parsing_dt_filename
+from .structures import ArticleInfo
+from .structures import ArticleShortInfo
+from .networking import custom_exceptions
+import networking
+import local_storage

@@ -1,2 +1,2 @@
-import core
-import resources
+from . import core
+from . import resources

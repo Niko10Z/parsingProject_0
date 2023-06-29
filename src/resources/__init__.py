@@ -1,2 +1,2 @@
-import coindesk_parser
-import cointelegraph_parser
+from . import coindesk_parser
+from . import cointelegraph_parser

@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig(filename=os.path.join(ROOT_DIR, conf_log_filename),
                     filemode='a',
-                    format='%(asctime)s %(name)s %(levelname)s \n%(message)s',
+                    format='%(asctime)s || %(name)s || %(levelname)s || %(module)s\n%(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -18,10 +18,9 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     news_list = []
-    # news_list = coindesk_parser.get_all_links(datetime(2023, 6, 7, 23, 59), datetime(2023, 6, 5, 0, 0))
-    last_pars_time = get_last_pars_dt()
-    # news_list = coindesk_parser.get_rss_links(from_dt=datetime.now(), to_dt=last_pars_time)
-    news_list = coindesk_parser.get_rss_links(from_dt=datetime.now())
+    news_list = coindesk_parser.get_all_links(datetime(2023, 6, 7, 23, 59), datetime(2023, 6, 5, 0, 0))
+    # last_pars_time = get_last_pars_dt()
+    # news_list = coindesk_parser.get_rss_links()
     for item in news_list:
         tmp_article = coindesk_parser.get_article_info(item.link)
         if not tmp_article:

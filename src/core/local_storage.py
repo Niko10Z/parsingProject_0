@@ -5,7 +5,7 @@ import zipfile
 import tempfile
 import hashlib # md5, sha1, sha224, sha256, sha384, sha512
 from datetime import datetime
-from src.core.networking.custom_exceptions import SavingErrorException, ReadingErrorException
+from src.core.structures.custom_exceptions import SavingErrorException, ReadingErrorException
 from src.const import ROOT_DIR, conf_last_parsing_dt_filename
 from src.core.structures import ArticleInfo
 from src.conf import dir_name_archives, dir_name_html, dir_name_json
@@ -21,7 +21,7 @@ def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
             raise SavingErrorException(f'File_name: {file_name}\nReason: Empty article')
         if not file_name:
             file_name = f'{hashlib.sha256(f"{article.href}".encode()).hexdigest()}.xz'
-        if os.path.isfile(os.path.join(ROOT_DIR, dir_name_archives, file_name)):
+        if os.path.isfile(os.path.join(ROOT_DIR + dir_name_archives, file_name)):
             logger.warning(f'File {file_name} already exists')
             return
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -36,7 +36,7 @@ def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
                 zpf.write(os.path.join(temp_dir, 'article.html'), 'article.html')
                 zpf.write(os.path.join(temp_dir, 'article.json'), 'article.json')
             with open(os.path.join(temp_dir, file_name), "rb") as arch, \
-                 open(os.path.join(ROOT_DIR, dir_name_archives, file_name), "wb") as lzout:
+                 open(os.path.join(ROOT_DIR + dir_name_archives, file_name), "wb") as lzout:
                 lzout.write(lzma.compress(arch.read()))
     except Exception as e:
         raise SavingErrorException(f'File_name: {file_name}\nArticle: {article._asdict()}', parent=e)
@@ -45,12 +45,12 @@ def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
 def decompress_archive(file_name):
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            with open(os.path.join(ROOT_DIR, dir_name_archives, file_name), 'rb') as compressed, \
+            with open(os.path.join(ROOT_DIR + dir_name_archives, file_name), 'rb') as compressed, \
                     open(os.path.join(temp_dir, file_name), 'wb') as decompressed:
                 decompressed.write(lzma.decompress(compressed.read()))
             with zipfile.ZipFile(os.path.join(temp_dir, file_name), "r") as fp:
-                with open(os.path.join(ROOT_DIR, dir_name_html, f'{file_name[:-3]}_article.html'), 'wb') as html_file, \
-                        open(os.path.join(ROOT_DIR, dir_name_json, f'{file_name[:-3]}_article.json'), 'wb') as json_file:
+                with open(os.path.join(ROOT_DIR + dir_name_html, f'{file_name[:-3]}_article.html'), 'wb') as html_file, \
+                        open(os.path.join(ROOT_DIR + dir_name_json, f'{file_name[:-3]}_article.json'), 'wb') as json_file:
                     html_file.write(fp.read('article.html'))
                     json_file.write(fp.read('article.json'))
     except Exception as e:
@@ -60,7 +60,7 @@ def decompress_archive(file_name):
 def read_from_disk(file_name: str = '') -> ArticleInfo:
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            with open(os.path.join(ROOT_DIR, dir_name_archives, file_name), 'rb') as compressed, \
+            with open(os.path.join(ROOT_DIR + dir_name_archives, file_name), 'rb') as compressed, \
                     open(os.path.join(temp_dir, file_name), 'wb') as decompressed:
                 decompressed.write(lzma.decompress(compressed.read()))
             with zipfile.ZipFile(os.path.join(temp_dir, file_name), "r") as fp:

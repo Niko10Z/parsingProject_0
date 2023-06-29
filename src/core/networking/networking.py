@@ -1,5 +1,5 @@
 import requests
-from src.core.networking.custom_exceptions import RequestErrorException
+from src.core.structures.custom_exceptions import RequestErrorException
 
 
 def get_html_from_url(href: str, headers: dict = None, cookies: dict = None) -> str:
@@ -30,22 +30,18 @@ def get_json_from_url(href: str, headers: dict = None, cookies: dict = None, jso
     if not cookies:
         cookies = {}
 
-    json_data = {
-        'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
-        'operationName': 'TagPageQuery',
-        'variables': {
-            'slug': 'bitcoin',
-            'order': 'postPublishedTime',
-            'offset': 15,
-            'length': 15,
-            'short': 'en',
-            'cacheTimeInMS': 300000,
-        },
-    }
+    # json_data = {
+    #     'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
+    #     'operationName': 'TagPageQuery',
+    #     'variables': {
+    #         'slug': 'bitcoin',
+    #         'order': 'postPublishedTime',
+    #         'offset': 15,
+    #         'length': 15,
+    #         'short': 'en',
+    #         'cacheTimeInMS': 300000,
+    #     },
+    # }
 
-    response = requests.post('https://conpletus.cointelegraph.com/v1/',
-                             headers=headers,
-                             cookies=cookies,
-                             json=json_data)
-    response = requests.post(href, headers=headers, cookies=cookies, json=json_data)
+    response = requests.post(href, headers=headers, cookies=cookies, json=json)
     return response.json()

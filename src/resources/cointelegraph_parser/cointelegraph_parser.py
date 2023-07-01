@@ -7,7 +7,7 @@ import feedparser
 from time import mktime
 
 
-def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 50) -> List[ArticleShortInfo]:
+def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> List[ArticleShortInfo]:
     json_reqv = {
         'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
         'operationName': 'TagPageQuery',
@@ -43,6 +43,31 @@ def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 50) -> 
         # print('\n')
         
     return res_list
+
+
+def get_one_page_last_link(news_tag: str, num_page: int, news_on_page: int = 15) -> ArticleShortInfo:
+    json_reqv = {
+        'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
+        'operationName': 'TagPageQuery',
+        'variables': {
+            'slug': news_tag,
+            'order': 'postPublishedTime',
+            'offset': news_on_page * num_page,
+            'length': news_on_page,
+            'short': 'en',
+            'cacheTimeInMS': 300000,
+        },
+    }
+    json_data = get_json_from_url('https://conpletus.cointelegraph.com/v1/', json=json_reqv)
+    news_obj = json_data['data']['locale']['tag']['posts']['data'][-1]
+    return ArticleShortInfo(
+        news_obj['postBadge']['postBadgeTranslates'][0]['title'],
+        news_obj['postTranslate']['title'],
+        f'https://cointelegraph.com/news/{news_obj["slug"]}',
+        news_obj['postTranslate']['leadText'],
+        str.strip(news_obj['postTranslate']['author']['authorTranslates'][0]['name']),
+        datetime.fromisoformat(news_obj['postTranslate']['published'])
+    )
 
 
 def get_rss_links(from_dt: datetime = datetime.now(), to_dt: datetime = None) -> List[ArticleShortInfo]:
@@ -103,6 +128,69 @@ def get_article_info(href: str) -> ArticleInfo:
     return ainfo
 
 
-for el in get_rss_links():
-    print(el)
-pass
+def get_news_tags() -> List[str]:
+    html_info = get_html_from_url('https://cointelegraph.com/')
+    soup = BeautifulSoup(html_info, "html.parser")
+    return [el['href'][6:] for el in soup.select('div.header-zone > '
+                'div.header-zone__menu > '
+                'div.menu-desktop__row > '
+                'nav > ul > '
+                'li > div > '
+                'span[data-gtm-locator="menubar_clickon_news"] + div > '
+                'ul > li > a')]
+
+
+def get_start_page(tag_name: str, from_dt: datetime) -> int:
+    try:
+        page_num = 1
+        left, right = 1, page_num
+        news_page_article = get_one_page_last_link(tag_name, page_num)
+        # Идём вправо пока не перейдём первую (бОльшую) границу
+        while news_page_article.pub_datetime > from_dt:
+            page_num *= 2
+            right = page_num
+            news_page_article = get_one_page_last_link(tag_name, page_num)
+        # Бинарным поиском ищем страницу начала
+        while left < right:
+            page_num = (left + right) // 2
+            news_page_article = get_one_page_last_link(tag_name, page_num)
+            if news_page_article.pub_datetime <= from_dt:
+                right = page_num
+            elif left < page_num:
+                left = page_num
+            else:
+                page_num = right
+                break
+    except Exception as e:
+        raise ParsingErrorException(f'Error by searching start page for tag "{tag_name}" and date {from_dt}', parent=e)
+    return page_num
+
+
+def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
+    articles_list = []
+    try:
+        page_num = get_start_page(tag_name, from_dt)
+        news_page_articles = get_one_page_links(tag_name, page_num)
+        # Пока не выйдем за границу (меньшую) окна
+        while news_page_articles[0].pub_datetime > to_dt:
+            news_page_articles = get_one_page_links(tag_name, page_num)
+            articles_list.extend(filter(lambda elem: from_dt >= elem.pub_datetime >= to_dt, news_page_articles))
+            page_num += 1
+    except Exception as e:
+        raise ParsingErrorException(f'Gel all news of one tag by datetime error', parent=e)
+    return articles_list
+
+
+def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
+    articles_list = []
+    try:
+        if not from_dt:
+            from_dt = datetime.now()
+        if not to_dt:
+            from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=)
+        for news_tag in get_news_tags():
+            articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
+    except Exception as e:
+        raise ParsingErrorException(f'ERROR in getting all news by datetime', parent=e)
+
+    return articles_list

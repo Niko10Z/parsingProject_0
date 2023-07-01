@@ -9,7 +9,7 @@ from time import mktime
 
 
 def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
-    page_html = get_html_from_url(f'https://www.coindesk.com/tag/{news_tag}/{num_page}')
+    page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:
         soup = BeautifulSoup(page_html, "html.parser")
         # short_news = soup.find_all('div', class_='articleTextSection')
@@ -39,7 +39,7 @@ def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
 
 
 def get_one_page_last_link(news_tag: str, num_page: int) -> ArticleShortInfo:
-    page_html = get_html_from_url(f'https://www.coindesk.com/tag/{news_tag}/{num_page}')
+    page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:
         soup = BeautifulSoup(page_html, "html.parser")
         # short_news = soup.find_all('div', class_='articleTextSection')
@@ -94,15 +94,15 @@ def get_rss_links(from_dt: datetime = datetime.now(), to_dt: datetime = None) ->
     return news_list
 
 
-def get_web3_tags() -> List[str]:
+def get_news_tags() -> List[str]:
     html_info = get_html_from_url('https://coindesk.com')
     soup = BeautifulSoup(html_info, "html.parser")
-    return [el.text.lower().replace(' ', '-') for el in soup.select('header.sticky-header > '
+    return [el['href'] for el in soup.select('header.sticky-header > '
                 'div > '
                 'div[data-module-name="main-navigation"] > '
                 'div[data-submodule-name="subrow"] > '
                 'nav > ul > '
-                'li > a[href="/web3/"] + div > div > div > div > div > ul > li')]
+                'li > a[href="/web3/"] + div > div > div > div > div > ul > li > a')]
 
 
 def get_start_page(tag_name: str, from_dt: datetime) -> int:
@@ -153,7 +153,7 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
             from_dt = datetime.now()
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0)
-        for w3_tag in get_web3_tags():
+        for w3_tag in get_news_tags():
             articles_list.extend(get_all_one_tag_links(w3_tag, from_dt, to_dt))
     except Exception as e:
         raise ParsingErrorException(f'Gel all news by datetime error', parent=e)

@@ -1,3 +1,5 @@
+import pytz
+
 from src.core import ArticleShortInfo, ArticleInfo
 from src.core.structures.custom_exceptions import ParsingErrorException
 from src.core.networking import get_html_from_url
@@ -66,7 +68,7 @@ def get_one_page_last_link(news_tag: str, num_page: int) -> ArticleShortInfo:
                                     f'Page URL:https://www.coindesk.com/tag/{news_tag}/{num_page}', parent=e)
 
 
-def get_rss_links(from_dt: datetime = datetime.now(), to_dt: datetime = None) -> List[ArticleShortInfo]:
+def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = None) -> List[ArticleShortInfo]:
     try:
         # TODO почему не радотает rss_parser
         # rss = Parser.parse(xml_data)
@@ -150,7 +152,7 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
         if not from_dt:
-            from_dt = datetime.now()
+            from_dt = datetime.now(pytz.UTC)
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0)
         for w3_tag in get_news_tags():
@@ -174,7 +176,7 @@ def get_article_info(href: str) -> ArticleInfo:
                       .select_one(':is(div.at-created > div > span, div.block-item > span > span.fUOSEs)')
                       .text
                       .replace('.', ''), "%b %d, %Y at %I:%M %p %Z")  # %r)
-        parsing_dt = datetime.now()
+        parsing_dt = datetime.now(pytz.UTC)
         language = soup.select_one('div.footer-selectstyles__StyledRootContainer-sxto8j-0.lkWIzk > button').text
         ainfo = ArticleInfo(header=header,
                             content=content,

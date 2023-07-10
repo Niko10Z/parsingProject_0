@@ -4,3 +4,4 @@ from .custom_exceptions import ParsingErrorException
 from .custom_exceptions import SavingErrorException
 from .custom_exceptions import RequestErrorException
 from .custom_exceptions import ReadingErrorException
+from .custom_exceptions import DataBaseErrorException

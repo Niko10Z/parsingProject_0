@@ -15,15 +15,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
+def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> str:
     try:
         if not article:
             raise SavingErrorException(f'File_name: {file_name}\nReason: Empty article')
         if not file_name:
             file_name = f'{hashlib.sha256(f"{article.href}".encode()).hexdigest()}.xz'
-        if os.path.isfile(os.path.join(ROOT_DIR + dir_name_archives, file_name)):
+        file_full_name = os.path.join(ROOT_DIR + dir_name_archives, file_name)
+        if os.path.isfile(file_full_name):
             logger.warning(f'File {file_name} already exists')
-            return
+            return file_full_name
         with tempfile.TemporaryDirectory() as temp_dir:
             with open(os.path.join(temp_dir, 'article.html'), 'wb') as f:
                 f.write(bytes(article.html, 'utf-8'))
@@ -36,8 +37,9 @@ def save_to_disk(article: ArticleInfo = None, file_name: str = '') -> None:
                 zpf.write(os.path.join(temp_dir, 'article.html'), 'article.html')
                 zpf.write(os.path.join(temp_dir, 'article.json'), 'article.json')
             with open(os.path.join(temp_dir, file_name), "rb") as arch, \
-                 open(os.path.join(ROOT_DIR + dir_name_archives, file_name), "wb") as lzout:
+                 open(file_full_name, "wb") as lzout:
                 lzout.write(lzma.compress(arch.read()))
+        return file_full_name
     except Exception as e:
         raise SavingErrorException(f'File_name: {file_name}\nArticle: {article._asdict()}', parent=e)
 

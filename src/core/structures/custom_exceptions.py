@@ -62,3 +62,18 @@ class ReadingErrorException(Exception):
         self.parent = parent
         logger.error(f'ReadingErrorException\n{message}\n{parent}')
         super().__init__(self.message)
+
+
+class DataBaseErrorException(Exception):
+    """Exception raised for errors during request.
+
+    Attributes:
+        message -- explanation of the error
+        parent -- really catched exception
+    """
+
+    def __init__(self, message: str="Some database error", parent: Exception=None):
+        self.message = message
+        self.parent = parent
+        logger.error(f'DataBaseErrorException\n{message}\n{parent}')
+        super().__init__(self.message)

@@ -10,6 +10,14 @@ import feedparser
 from time import mktime
 
 
+__all__ = [
+    'get_one_page_links',
+    'get_rss_links',
+    'get_all_links',
+    'get_article_info'
+    ]
+
+
 def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
     page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:

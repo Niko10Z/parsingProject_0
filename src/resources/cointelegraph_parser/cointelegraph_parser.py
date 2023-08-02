@@ -12,6 +12,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+__all__ = [
+    'get_one_page_links',
+    'get_rss_links',
+    'get_all_links',
+    'get_article_info'
+]
+
+
 def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> List[ArticleShortInfo]:
     try:
         json_reqv = {

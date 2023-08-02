@@ -117,14 +117,14 @@ def get_article_info(href: str) -> ArticleInfo:
         # TODO брать только бездетных
         content += '\n'.join(i.text for i in soup.select(':is(div.post-content > p, div.post-content > h2)'))
         publication_dt = datetime.fromisoformat(
-            soup.select('div.post-meta > div.post-meta__publish-date > time')[0]['datetime'])
+            soup.select_one('div.post-meta > div.post-meta__publish-date > time')['datetime'])
         parsing_dt = datetime.now(pytz.UTC)
-        language = soup.select('header.header-desktop > '
+        language = soup.select_one('header.header-desktop > '
                                'div.header-desktop__row > '
                                'div.header-side-links > '
                                'ul > '
                                'li:first-child > '
-                               'div.header-side-links__select')[0].text
+                               'div.header-side-links__select').text
         ainfo = ArticleInfo(header=header,
                             content=content,
                             publication_dt=publication_dt,

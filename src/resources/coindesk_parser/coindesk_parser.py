@@ -18,13 +18,15 @@ def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
         short_news = soup.select('div.articleTextSection')
         news_list = []
         for item in short_news:
-            title = item.find('a', class_='card-title')
+            # title = item.find('a', class_='card-title')
+            title = item.select_one('a.card-title')
             if title.attrs['href'].find('/video/') != -1:
                 continue
-            pub_date = item\
-                .find('div', class_='timing-data')\
-                .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
-                .text
+            # pub_date = item\
+            #     .find('div', class_='timing-data')\
+            #     .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
+            #     .text
+            pub_date = item.select_one('div.timing-data > div.ac-publishing-date > div > span').text
             news_list.append(ArticleShortInfo(
                 category=item.find('a', class_='category').text,
                 title=title.text,
@@ -48,20 +50,23 @@ def get_one_page_last_link(news_tag: str, num_page: int) -> ArticleShortInfo | N
         short_news = soup.select('div.articleTextSection')
         last_index = len(short_news)-1
         last_news = short_news[last_index]
-        title = last_news.find('a', class_='card-title')
+        # title = last_news.find('a', class_='card-title')
+        title = last_news.select_one('a.card-title')
         while title.attrs['href'].find('/video/') != -1 and last_index > 0:
             last_index -= 1
             last_news = short_news[last_index]
-            title = last_news.find('a', class_='card-title')
+            # title = last_news.find('a', class_='card-title')
+            title = last_news.select_one('a.card-title')
         if title.attrs['href'].find('/video/') != -1:
             # raise ParsingErrorException(f'Short news parsing error\n'
             #                             f'Page URL:https://www.coindesk.com{news_tag}/{num_page}\n'
             #                             f'Last news is not parseble')
             return None
-        pub_date = last_news\
-            .find('div', class_='timing-data')\
-            .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
-            .text
+        # pub_date = last_news\
+        #     .find('div', class_='timing-data')\
+        #     .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
+        #     .text
+        pub_date = last_news.select_one('div.timing-data > div.ac-publishing-date > div > span').text
         return ArticleShortInfo(
             category=last_news.find('a', class_='category').text,
             title=title.text,
@@ -187,7 +192,7 @@ def get_article_info(href: str) -> ArticleInfo:
                       .text
                       .replace('.', ''), "%b %d, %Y at %I:%M %p %Z"))  # %r)
         parsing_dt = datetime.now(pytz.UTC)
-        language = soup.select_one('div.footer-selectstyles__StyledRootContainer-sxto8j-0.lkWIzk > button').text
+        language = soup.select_one('div[data-module-name="footer/footer-select"] > button').text
         ainfo = ArticleInfo(header=header,
                             content=content,
                             publication_dt=publication_dt,

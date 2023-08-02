@@ -1,8 +1,7 @@
 import hashlib
-import sqlalchemy.orm
 from sqlalchemy import create_engine, Connection
 from sqlalchemy import Column, Integer, DateTime, String
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy_utils import database_exists, create_database
 from datetime import datetime
 from src.const import ROOT_DIR
@@ -63,7 +62,7 @@ class ArticleLink(BaseModel):
 # Поиграться с сессиями
 
 
-def get_sqlite_session(db_name: str) -> sqlalchemy.orm.Session:
+def get_sqlite_session(db_name: str) -> Session:
     # engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/{db_name}")
     engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/news_journal.sqlite")
     if not database_exists(engine.url):
@@ -75,7 +74,7 @@ def get_sqlite_session(db_name: str) -> sqlalchemy.orm.Session:
     return sessionmaker(bind=engine)()
 
 
-def save_article_to_db(session: sqlalchemy.orm.Session, article_info: ArticleInfo, file_full_name: str):
+def save_article_to_db(session: Session, article_info: ArticleInfo, file_full_name: str):
     try:
         if article_link := session.query(ArticleLink).filter_by(href=article_info.href).first():
             article_link.article_archive_file_path = file_full_name
@@ -93,11 +92,11 @@ def save_article_to_db(session: sqlalchemy.orm.Session, article_info: ArticleInf
         raise DataBaseErrorException(f'Save article to DB error', parent=e)
 
 
-def get_article_from_db(session: sqlalchemy.orm.Session, href: str) -> ArticleLink | None:
+def get_article_from_db(session: Session, href: str) -> ArticleLink | None:
     return session.query(ArticleLink).filter_by(href=href).first()
 
 
-def is_parsed(session: sqlalchemy.orm.Session, href: str) -> bool:
+def is_parsed(session: Session, href: str) -> bool:
     try:
         if session.query(ArticleLink).filter_by(href=href).first().article_archive_file_path:
             return True
@@ -108,7 +107,7 @@ def is_parsed(session: sqlalchemy.orm.Session, href: str) -> bool:
         raise DataBaseErrorException(f'Searching ArticleLink object error', parent=e)
 
 
-def set_archive_path(session: sqlalchemy.orm.Session, href: str, path: str) -> None:
+def set_archive_path(session: Session, href: str, path: str) -> None:
     try:
         session.query(ArticleLink).filter_by(href=href).first().article_archive_file_path = path
         return

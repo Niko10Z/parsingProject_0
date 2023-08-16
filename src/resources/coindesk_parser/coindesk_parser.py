@@ -1,5 +1,5 @@
 import pytz
-
+import logging
 from src.core import ArticleShortInfo, ArticleInfo
 from src.core.structures.custom_exceptions import ParsingErrorException
 from src.core.networking import get_html_from_url
@@ -18,14 +18,20 @@ __all__ = [
     ]
 
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+
+
 def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
     page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:
+        logger.info(f'Getting news from page {num_page}')
         soup = BeautifulSoup(page_html, "html.parser")
         # short_news = soup.find_all('div', class_='articleTextSection')
         short_news = soup.select('div.articleTextSection')
         news_list = []
-        for item in short_news:
+        for ind, item in enumerate(short_news):
+            logger.info(f'Parsing item {ind}')
             # title = item.find('a', class_='card-title')
             title = item.select_one('a.card-title')
             if title.attrs['href'].find('/video/') != -1:
@@ -53,6 +59,7 @@ def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
 def get_one_page_last_link(news_tag: str, num_page: int) -> ArticleShortInfo | None:
     page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:
+        logger.info(f'Getting last news from page {num_page}')
         soup = BeautifulSoup(page_html, "html.parser")
         # short_news = soup.find_all('div', class_='articleTextSection')
         short_news = soup.select('div.articleTextSection')
@@ -92,6 +99,7 @@ def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = 
     try:
         # TODO почему не радотает rss_parser
         # rss = Parser.parse(xml_data)
+        logger.info('Get links from RSS')
         rss = feedparser.parse('https://www.coindesk.com/arc/outboundfeeds/rss/')
         news_list = []
         for item in rss.entries:
@@ -118,17 +126,22 @@ def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = 
 
 def get_news_tags() -> List[str]:
     html_info = get_html_from_url('https://coindesk.com')
-    soup = BeautifulSoup(html_info, "html.parser")
-    return [el['href'] for el in soup.select('header.sticky-header > '
-                'div > '
-                'div[data-module-name="main-navigation"] > '
-                'div[data-submodule-name="subrow"] > '
-                'nav > ul > '
-                'li > a[href="/web3/"] + div > div > div > div > div > ul > li > a')]
+    try:
+        logger.info(f'Searching news tags')
+        soup = BeautifulSoup(html_info, "html.parser")
+        return [el['href'] for el in soup.select('header.sticky-header > '
+                    'div > '
+                    'div[data-module-name="main-navigation"] > '
+                    'div[data-submodule-name="subrow"] > '
+                    'nav > ul > '
+                    'li > a[href="/web3/"] + div > div > div > div > div > ul > li > a')]
+    except Exception as e:
+        raise ParsingErrorException('Getting news tags error', parent=e)
 
 
 def get_start_page(tag_name: str, from_dt: datetime) -> int:
     try:
+        logger.info(f'Search start page')
         page_num = 1
         left, right = 1, page_num
         news_page_article = get_one_page_last_link(tag_name, page_num)
@@ -159,6 +172,7 @@ def get_start_page(tag_name: str, from_dt: datetime) -> int:
 def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
+        logger.info(f'Get news on tag "{tag_name}"')
         page_num = get_start_page(tag_name, from_dt)
         news_page_articles = get_one_page_links(tag_name, page_num)
         # Пока не выйдем за границу (меньшую) окна
@@ -174,6 +188,7 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
 def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
+        logger.info(f'Get all "coindesk.com" links from {from_dt} to {to_dt}')
         if not from_dt:
             from_dt = datetime.now(pytz.UTC)
         if not to_dt:
@@ -189,6 +204,7 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
 def get_article_info(href: str) -> ArticleInfo:
     html_info = get_html_from_url(href)
     try:
+        logger.info(f'Get article info from {href}')
         soup = BeautifulSoup(html_info, "html.parser")
 
         header = soup.select_one('.at-headline').text

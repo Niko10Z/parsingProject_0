@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 import feedparser
 from time import mktime
 import logging
-logger = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -20,8 +19,13 @@ __all__ = [
 ]
 
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+
+
 def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> List[ArticleShortInfo]:
     try:
+        logger.info(f'Getting news from page {num_page}')
         json_reqv = {
             'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
             'operationName': 'TagPageQuery',
@@ -37,26 +41,16 @@ def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> 
         logger.info(f'Try to get JSON for tag {news_tag}, page {num_page} ({news_on_page} on page)')
         json_data = get_json_from_url('https://conpletus.cointelegraph.com/v1/', json=json_reqv)
         res_list = []
-        for i in json_data['data']['locale']['tag']['posts']['data']:
-            logger.info(f'Parsing {i}')
+        for ind, val in enumerate(json_data['data']['locale']['tag']['posts']['data']):
+            logger.info(f'Parsing item {ind}')
             res_list.append(ArticleShortInfo(
-                i['postBadge']['postBadgeTranslates'][0]['title'],
-                i['postTranslate']['title'],
-                f'https://cointelegraph.com/news/{i["slug"]}',
-                i['postTranslate']['leadText'],
-                str.strip(i['postTranslate']['author']['authorTranslates'][0]['name']),
-                datetime.fromisoformat(i['postTranslate']['published'])
+                val['postBadge']['postBadgeTranslates'][0]['title'],
+                val['postTranslate']['title'],
+                f'https://cointelegraph.com/news/{val["slug"]}',
+                val['postTranslate']['leadText'],
+                str.strip(val['postTranslate']['author']['authorTranslates'][0]['name']),
+                datetime.fromisoformat(val['postTranslate']['published'])
             ))
-            # print(i)
-            # print(i['slug'])
-            # print(i['postTranslate']['title'])
-            # print(i['postTranslate']['published'])
-            # print(i['postTranslate']['leadText'])
-            # print(i['postTranslate']['author']['slug'])
-            # print(str.strip(i['postTranslate']['author']['authorTranslates'][0]['name']))
-            # print(i['category'])
-            # print(i['postBadge']['postBadgeTranslates'][0]['title'])
-            # print('\n')
     except Exception as e:
         raise ParsingErrorException(f'Error by trying parse page {num_page}({news_on_page} news on page) of tag {news_tag}',
                                     parent=e)
@@ -64,34 +58,40 @@ def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> 
 
 
 def get_one_page_last_link(news_tag: str, num_page: int, news_on_page: int = 15) -> ArticleShortInfo:
-    json_reqv = {
-        'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
-        'operationName': 'TagPageQuery',
-        'variables': {
-            'slug': news_tag,
-            'order': 'postPublishedTime',
-            'offset': news_on_page * num_page,
-            'length': news_on_page,
-            'short': 'en',
-            'cacheTimeInMS': 300000,
-        },
-    }
-    json_data = get_json_from_url('https://conpletus.cointelegraph.com/v1/', json=json_reqv)
-    news_obj = json_data['data']['locale']['tag']['posts']['data'][-1]
-    return ArticleShortInfo(
-        news_obj['postBadge']['postBadgeTranslates'][0]['title'],
-        news_obj['postTranslate']['title'],
-        f'https://cointelegraph.com/news/{news_obj["slug"]}',
-        news_obj['postTranslate']['leadText'],
-        str.strip(news_obj['postTranslate']['author']['authorTranslates'][0]['name']),
-        datetime.fromisoformat(news_obj['postTranslate']['published'])
-    )
+    try:
+        logger.info(f'Getting last news from page {num_page}')
+        json_reqv = {
+            'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
+            'operationName': 'TagPageQuery',
+            'variables': {
+                'slug': news_tag,
+                'order': 'postPublishedTime',
+                'offset': news_on_page * num_page,
+                'length': news_on_page,
+                'short': 'en',
+                'cacheTimeInMS': 300000,
+            },
+        }
+        json_data = get_json_from_url('https://conpletus.cointelegraph.com/v1/', json=json_reqv)
+        news_obj = json_data['data']['locale']['tag']['posts']['data'][-1]
+        return ArticleShortInfo(
+            news_obj['postBadge']['postBadgeTranslates'][0]['title'],
+            news_obj['postTranslate']['title'],
+            f'https://cointelegraph.com/news/{news_obj["slug"]}',
+            news_obj['postTranslate']['leadText'],
+            str.strip(news_obj['postTranslate']['author']['authorTranslates'][0]['name']),
+            datetime.fromisoformat(news_obj['postTranslate']['published'])
+        )
+    except Exception as e:
+        raise ParsingErrorException(f'Short news parsing error\n'
+                                    f'Page URL:https://www.cointelegraph.com{news_tag}/{num_page}', parent=e)
 
 
 def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = None) -> List[ArticleShortInfo]:
     try:
         # TODO почему не радотает rss_parser
         # rss = Parser.parse(xml_data)
+        logger.info('Get links from RSS')
         rss = feedparser.parse('https://cointelegraph.com/rss')
         news_list = []
         for item in rss.entries:
@@ -114,52 +114,25 @@ def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = 
     return news_list
 
 
-def get_article_info(href: str) -> ArticleInfo:
-    html_info = get_html_from_url(href)
-
-    try:
-        soup = BeautifulSoup(html_info, "html.parser")
-
-        header = soup.select('h1.post__title')[0].text
-        content = soup.select('p.post__lead')[0].text
-        # TODO брать только бездетных
-        content += '\n'.join(i.text for i in soup.select(':is(div.post-content > p, div.post-content > h2)'))
-        publication_dt = datetime.fromisoformat(
-            soup.select_one('div.post-meta > div.post-meta__publish-date > time')['datetime'])
-        parsing_dt = datetime.now(pytz.UTC)
-        language = soup.select_one('header.header-desktop > '
-                               'div.header-desktop__row > '
-                               'div.header-side-links > '
-                               'ul > '
-                               'li:first-child > '
-                               'div.header-side-links__select').text
-        ainfo = ArticleInfo(header=header,
-                            content=content,
-                            publication_dt=publication_dt,
-                            parsing_dt=parsing_dt,
-                            language=language,
-                            html=html_info,
-                            href=href)
-    except Exception as e:
-        raise ParsingErrorException(f'cointelegraph.com article parsing error.\nURL: {href}', parent=e)
-
-    return ainfo
-
-
 def get_news_tags() -> List[str]:
     html_info = get_html_from_url('https://cointelegraph.com/')
-    soup = BeautifulSoup(html_info, "html.parser")
-    return [el['href'][6:] for el in soup.select('div.header-zone > '
+    try:
+        logger.info(f'Searching news tags')
+        soup = BeautifulSoup(html_info, "html.parser")
+        return [el['href'][6:] for el in soup.select('div.header-zone > '
                 'div.header-zone__menu > '
                 'div.menu-desktop__row > '
                 'nav > ul > '
                 'li > div > '
                 'span[data-gtm-locator="menubar_clickon_news"] + div > '
                 'ul > li > a')]
+    except Exception as e:
+        raise ParsingErrorException('Getting news tags error', parent=e)
 
 
 def get_start_page(tag_name: str, from_dt: datetime) -> int:
     try:
+        logger.info(f'Search start page')
         page_num = 1
         left, right = 1, page_num
         news_page_article = get_one_page_last_link(tag_name, page_num)
@@ -188,6 +161,7 @@ def get_start_page(tag_name: str, from_dt: datetime) -> int:
 def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
+        logger.info(f'Get news on tag "{tag_name}"')
         page_num = get_start_page(tag_name, from_dt)
         news_page_articles = get_one_page_links(tag_name, page_num)
         # Пока не выйдем за границу (меньшую) окна
@@ -203,6 +177,7 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
 def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
+        logger.info(f'Get all "cointelegraph.com" links from {from_dt} to {to_dt}')
         if not from_dt:
             from_dt = datetime.now(pytz.UTC)
         if not to_dt:
@@ -214,3 +189,36 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
         raise ParsingErrorException(f'ERROR in getting all news by datetime', parent=e)
 
     return articles_list
+
+
+def get_article_info(href: str) -> ArticleInfo:
+    html_info = get_html_from_url(href)
+
+    try:
+        logger.info(f'Get article info from {href}')
+        soup = BeautifulSoup(html_info, "html.parser")
+
+        header = soup.select('h1.post__title')[0].text
+        content = soup.select('p.post__lead')[0].text
+        # TODO брать только бездетных
+        content += '\n'.join(i.text for i in soup.select(':is(div.post-content > p, div.post-content > h2)'))
+        publication_dt = datetime.fromisoformat(
+            soup.select_one('div.post-meta > div.post-meta__publish-date > time')['datetime'])
+        parsing_dt = datetime.now(pytz.UTC)
+        language = soup.select_one('header.header-desktop > '
+                               'div.header-desktop__row > '
+                               'div.header-side-links > '
+                               'ul > '
+                               'li:first-child > '
+                               'div.header-side-links__select').text
+        ainfo = ArticleInfo(header=header,
+                            content=content,
+                            publication_dt=publication_dt,
+                            parsing_dt=parsing_dt,
+                            language=language,
+                            html=html_info,
+                            href=href)
+    except Exception as e:
+        raise ParsingErrorException(f'cointelegraph.com article parsing error.\nURL: {href}', parent=e)
+
+    return ainfo

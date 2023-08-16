@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from sqlalchemy import create_engine, Connection
 from sqlalchemy import Column, Integer, DateTime, String
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
@@ -8,6 +9,10 @@ from src.const import ROOT_DIR
 from src.conf import dir_name_database
 from src.core.structures import ArticleInfo
 from src.core.structures import DataBaseErrorException
+
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 
 
 Base = declarative_base()
@@ -63,8 +68,7 @@ class ArticleLink(BaseModel):
 
 
 def get_sqlite_session(db_name: str) -> Session:
-    # engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/{db_name}")
-    engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/news_journal.sqlite")
+    engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/{db_name}")
     if not database_exists(engine.url):
         create_database(engine.url)
         # В метадате будут схемы всех наследников Base
@@ -122,3 +126,51 @@ def get_db_connection(db_name: str = 'news_journal.sqlite') -> Connection:
     if not database_exists(engine.url):
         create_database(engine.url)
     return engine.connect()
+
+
+class SQLiteWorker:
+
+    session: Session
+
+    def __init__(self, db_name: str):
+        if not db_name:
+            raise DataBaseErrorException('Empty DB name')
+        try:
+            engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/{db_name}")
+            if not database_exists(engine.url):
+                create_database(engine.url)
+                # В метадате будут схемы всех наследников Base
+                # создаём все схемы(таблицы) в базу ассоциированную с engine
+                metadata.create_all(bind=engine)
+            # Создаём КЛАСС для создания сессий к КОНКРЕТНОЙ БД(фабрику)
+            self.session = sessionmaker(bind=engine)()
+        except Exception as e:
+            raise DataBaseErrorException(' Creating SQLite worker error', parent=e)
+
+    def is_news_parsed(self, href: str) -> bool:
+        try:
+            if self.session.query(ArticleLink).filter_by(href=href).first().article_archive_file_path:
+                return True
+            return False
+        except AttributeError:
+            return False
+        except Exception as e:
+            raise DataBaseErrorException(f'Searching ArticleLink object error', parent=e)
+
+    def save_article_to_db(self, article_info: ArticleInfo, file_full_name: str):
+        try:
+            if article_link := self.session.query(ArticleLink).filter_by(href=article_info.href).first():
+                article_link.article_archive_file_path = file_full_name
+                article_link.published_dt = article_info.publication_dt
+                article_link.parsed_dt = article_info.parsing_dt
+            else:
+                self.session.add(ArticleLink(
+                    article_info.href,
+                    hashlib.sha256(article_info.href.encode()).hexdigest(),
+                    article_info.publication_dt,
+                    article_info.parsing_dt,
+                    0,
+                    file_full_name))
+            self.session.commit()
+        except Exception as e:
+            raise DataBaseErrorException(f'Save article to DB error', parent=e)

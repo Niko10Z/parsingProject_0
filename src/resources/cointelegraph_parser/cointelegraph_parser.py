@@ -166,9 +166,9 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
         news_page_articles = get_one_page_links(tag_name, page_num)
         # Пока не выйдем за границу (меньшую) окна
         while news_page_articles[0].pub_datetime > to_dt:
-            news_page_articles = get_one_page_links(tag_name, page_num)
             articles_list.extend(filter(lambda elem: from_dt >= elem.pub_datetime >= to_dt, news_page_articles))
             page_num += 1
+            news_page_articles = get_one_page_links(tag_name, page_num)
     except Exception as e:
         raise ParsingErrorException(f'Gel all news of one tag by datetime error', parent=e)
     return articles_list
@@ -182,6 +182,7 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
             from_dt = datetime.now(pytz.UTC)
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
+        # TODO get news of any tag in a separate thread
         for news_tag in get_news_tags():
             logger.info(f'Try to find all {news_tag} news')
             articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))

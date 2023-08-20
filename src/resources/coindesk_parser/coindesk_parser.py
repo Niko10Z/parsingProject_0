@@ -28,19 +28,13 @@ def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
     try:
         logger.info(f'Getting news from page {num_page}')
         soup = BeautifulSoup(page_html, "html.parser")
-        # short_news = soup.find_all('div', class_='articleTextSection')
         short_news = soup.select('div.articleTextSection')
         news_list = []
         for ind, item in enumerate(short_news):
             logger.info(f'Parsing item {ind}')
-            # title = item.find('a', class_='card-title')
             title = item.select_one('a.card-title')
             if title.attrs['href'].find('/video/') != -1:
                 continue
-            # pub_date = item\
-            #     .find('div', class_='timing-data')\
-            #     .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
-            #     .text
             pub_date = item.select_one('div.timing-data > div.ac-publishing-date > div > span').text
             news_list.append(ArticleShortInfo(
                 category=item.find('a', class_='category').text,
@@ -178,9 +172,9 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
         news_page_articles = get_one_page_links(tag_name, page_num)
         # Пока не выйдем за границу (меньшую) окна
         while news_page_articles[0].pub_datetime > to_dt:
-            news_page_articles = get_one_page_links(tag_name, page_num)
             articles_list.extend(filter(lambda elem: from_dt >= elem.pub_datetime >= to_dt, news_page_articles))
             page_num += 1
+            news_page_articles = get_one_page_links(tag_name, page_num)
     except Exception as e:
         raise ParsingErrorException(f'Get all news of one tag by datetime error', parent=e)
     return articles_list

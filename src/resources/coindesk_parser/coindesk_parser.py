@@ -1,3 +1,4 @@
+import math
 import pytz
 import logging
 from src.core import ArticleShortInfo, ArticleInfo
@@ -155,9 +156,9 @@ def get_start_page(tag_name: str, from_dt: datetime) -> int:
             news_page_article = get_one_page_last_link(tag_name, page_num)
         # Бинарным поиском ищем страницу начала
         while left < right:
-            page_num = (left + right) // 2
+            page_num = math.ceil((left + right) / 2)
             news_page_article = get_one_page_last_link(tag_name, page_num)
-            if news_page_article.pub_datetime <= from_dt:
+            if news_page_article.pub_datetime <= from_dt and right > page_num:
                 right = page_num
             elif left < page_num:
                 left = page_num

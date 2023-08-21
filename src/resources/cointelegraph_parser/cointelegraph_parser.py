@@ -1,6 +1,9 @@
 import math
+import time
 from typing import List
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, wait
+import threading
 
 import pytz
 
@@ -26,7 +29,7 @@ logger.addHandler(logging.StreamHandler())
 
 def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> List[ArticleShortInfo]:
     try:
-        logger.info(f'Getting news from page {num_page}')
+        logger.info(f'Getting news from page {num_page} for tag {news_tag}')
         json_reqv = {
             'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
             'operationName': 'TagPageQuery',
@@ -60,7 +63,7 @@ def get_one_page_links(news_tag: str, num_page: int, news_on_page: int = 15) -> 
 
 def get_one_page_last_link(news_tag: str, num_page: int, news_on_page: int = 15) -> ArticleShortInfo:
     try:
-        logger.info(f'Getting last news from page {num_page}')
+        logger.info(f'Getting last news from page {num_page} and tag {news_tag}')
         json_reqv = {
             'query': 'query TagPageQuery($short: String, $slug: String!, $order: String, $offset: Int!, $length: Int!) {\n  locale(short: $short) {\n    tag(slug: $slug) {\n      cacheKey\n      id\n      slug\n      avatar\n      createdAt\n      updatedAt\n      redirectRelativeUrl\n      alternates {\n        cacheKey\n        short\n        domain\n        id\n        code\n        __typename\n      }\n      tagTranslates {\n        cacheKey\n        id\n        title\n        metaTitle\n        pageTitle\n        description\n        metaDescription\n        keywords\n        __typename\n      }\n      posts(order: $order, offset: $offset, length: $length) {\n        data {\n          cacheKey\n          id\n          slug\n          views\n          postTranslate {\n            cacheKey\n            id\n            title\n            avatar\n            published\n            publishedHumanFormat\n            leadText\n            author {\n              cacheKey\n              id\n              slug\n              authorTranslates {\n                cacheKey\n                id\n                name\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          category {\n            cacheKey\n            id\n            __typename\n          }\n          author {\n            cacheKey\n            id\n            slug\n            authorTranslates {\n              cacheKey\n              id\n              name\n              __typename\n            }\n            __typename\n          }\n          postBadge {\n            cacheKey\n            id\n            label\n            postBadgeTranslates {\n              cacheKey\n              id\n              title\n              __typename\n            }\n            __typename\n          }\n          showShares\n          showStats\n          __typename\n        }\n        postsCount\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}',
             'operationName': 'TagPageQuery',
@@ -133,7 +136,7 @@ def get_news_tags() -> List[str]:
 
 def get_start_page(tag_name: str, from_dt: datetime) -> int:
     try:
-        logger.info(f'Search start page')
+        logger.info(f'Search start page for tag {tag_name}')
         page_num = 1
         left, right = 1, page_num
         news_page_article = get_one_page_last_link(tag_name, page_num)
@@ -155,6 +158,7 @@ def get_start_page(tag_name: str, from_dt: datetime) -> int:
                 break
     except Exception as e:
         raise ParsingErrorException(f'Error by searching start page for tag "{tag_name}" and date {from_dt}', parent=e)
+    logger.info(f'Start page for tag {tag_name} is {page_num}')
     return page_num
 
 
@@ -174,7 +178,22 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
     return articles_list
 
 
+def threading_get_all_one_tag_links(articles_list: List[ArticleShortInfo], tag_name: str, from_dt: datetime, to_dt: datetime):
+    try:
+        logger.info(f'Get news on tag "{tag_name}"')
+        page_num = get_start_page(tag_name, from_dt)
+        news_page_articles = get_one_page_links(tag_name, page_num)
+        # Пока не выйдем за границу (меньшую) окна
+        while news_page_articles[0].pub_datetime > to_dt:
+            articles_list.extend(filter(lambda elem: from_dt >= elem.pub_datetime >= to_dt, news_page_articles))
+            page_num += 1
+            news_page_articles = get_one_page_links(tag_name, page_num)
+    except Exception as e:
+        raise ParsingErrorException(f'Gel all news of one tag by datetime error', parent=e)
+
+
 def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
+    start = time.time()
     articles_list = []
     try:
         logger.info(f'Get all "cointelegraph.com" links from {from_dt} to {to_dt}')
@@ -183,12 +202,31 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
         # TODO get news of any tag in a separate thread
+        # news_tags = get_news_tags()
+        # with ThreadPoolExecutor(max_workers=5) as executor:
+        #     executor.map(threading_get_all_one_tag_links,
+        #                  zip([articles_list]*len(news_tags),
+        #                      news_tags,
+        #                      [from_dt]*len(news_tags),
+        #                      [to_dt]*len(news_tags)))
+        #     executor.shutdown(wait=True, cancel_futures=False)
+
+        threads = list()
         for news_tag in get_news_tags():
-            logger.info(f'Try to find all {news_tag} news')
-            articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
+            t = threading.Thread(target=threading_get_all_one_tag_links,
+                                 args=(articles_list, news_tag, from_dt, to_dt, ))
+            threads.append(t)
+            t.start()
+        for index, thread in enumerate(threads):
+            thread.join()
+
+        # for news_tag in get_news_tags():
+        #     logger.info(f'Try to find all {news_tag} news')
+        #     articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
     except Exception as e:
         raise ParsingErrorException(f'ERROR in getting all news by datetime', parent=e)
-
+    logger.info(f'Escape from get_all_links. Working time is {time.time()-start}')
+    logger.info(f'Articles list length is {len(articles_list)}')
     return articles_list
 
 

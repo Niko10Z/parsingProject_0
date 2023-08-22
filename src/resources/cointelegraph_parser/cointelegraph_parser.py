@@ -2,7 +2,7 @@ import math
 import time
 from typing import List
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 import pytz
@@ -202,28 +202,38 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
         # TODO get news of any tag in a separate thread
-        # Почему-то не дожидается завершения потоков
+        # №1
+        # threads = list()
+        # for news_tag in get_news_tags():
+        #     t = threading.Thread(target=threading_get_all_one_tag_links,
+        #                          args=(articles_list, news_tag, from_dt, to_dt,))
+        #     threads.append(t)
+        #     t.start()
+        # for index, thread in enumerate(threads):
+        #     thread.join()
+
+        # №2
         # news_tags = get_news_tags()
         # with ThreadPoolExecutor(max_workers=5) as executor:
-        #     executor.map(threading_get_all_one_tag_links,
-        #                  zip([articles_list]*len(news_tags),
-        #                      news_tags,
-        #                      [from_dt]*len(news_tags),
-        #                      [to_dt]*len(news_tags)))
-        #     executor.shutdown(wait=True, cancel_futures=False)
+        #     futures = [executor.submit(get_all_one_tag_links, *item) for item in zip(news_tags, [from_dt]*len(news_tags), [to_dt]*len(news_tags))]
+        #     for future in as_completed(futures):
+        #         if future.result():
+        #             articles_list.extend(future.result())
 
-        threads = list()
-        for news_tag in get_news_tags():
-            t = threading.Thread(target=threading_get_all_one_tag_links,
-                                 args=(articles_list, news_tag, from_dt, to_dt, ))
-            threads.append(t)
-            t.start()
-        for index, thread in enumerate(threads):
-            thread.join()
+        # №3
+        news_tags = get_news_tags()
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for result in executor.map(get_all_one_tag_links,
+                                       news_tags,
+                                       [from_dt]*len(news_tags),
+                                       [to_dt]*len(news_tags)):
+                articles_list.extend(result)
 
+        # №4
         # for news_tag in get_news_tags():
         #     logger.info(f'Try to find all {news_tag} news')
         #     articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
+
     except Exception as e:
         raise ParsingErrorException(f'ERROR in getting all news by datetime', parent=e)
     logger.info(f'Escape from get_all_links. Working time is {time.time()-start}')

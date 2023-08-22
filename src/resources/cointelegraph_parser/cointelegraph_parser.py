@@ -202,6 +202,7 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
         # TODO get news of any tag in a separate thread
+        # Почему-то не дожидается завершения потоков
         # news_tags = get_news_tags()
         # with ThreadPoolExecutor(max_workers=5) as executor:
         #     executor.map(threading_get_all_one_tag_links,

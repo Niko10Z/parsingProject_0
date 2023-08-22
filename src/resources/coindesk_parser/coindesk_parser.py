@@ -1,4 +1,7 @@
 import math
+import threading
+import time
+
 import pytz
 import logging
 from src.core import ArticleShortInfo, ArticleInfo
@@ -8,7 +11,6 @@ from datetime import datetime
 from typing import List
 from bs4 import BeautifulSoup
 import feedparser
-from time import mktime
 
 
 __all__ = [
@@ -26,7 +28,7 @@ logger.addHandler(logging.StreamHandler())
 def get_one_page_links(news_tag: str, num_page: int) -> List[ArticleShortInfo]:
     page_html = get_html_from_url(f'https://www.coindesk.com{news_tag}{num_page}')
     try:
-        logger.info(f'Getting news from page {num_page}')
+        logger.info(f'Getting news from page {num_page} by tag {news_tag}')
         soup = BeautifulSoup(page_html, "html.parser")
         short_news = soup.select('div.articleTextSection')
         news_list = []
@@ -106,7 +108,7 @@ def get_rss_links(from_dt: datetime = datetime.now(pytz.UTC), to_dt: datetime = 
                 link=item.link,
                 description=item.summary,
                 author=item.author,
-                pub_datetime=datetime.fromtimestamp(mktime(item.published_parsed))
+                pub_datetime=datetime.fromtimestamp(time.mktime(item.published_parsed))
             )
             if to_dt:
                 if to_dt <= tmp_news.pub_datetime <= from_dt:
@@ -136,7 +138,7 @@ def get_news_tags() -> List[str]:
 
 def get_start_page(tag_name: str, from_dt: datetime) -> int:
     try:
-        logger.info(f'Search start page')
+        logger.info(f'Search start page for tag {tag_name}')
         page_num = 1
         left, right = 1, page_num
         news_page_article = get_one_page_last_link(tag_name, page_num)
@@ -180,6 +182,20 @@ def get_all_one_tag_links(tag_name: str, from_dt: datetime, to_dt: datetime) -> 
     return articles_list
 
 
+def threading_get_all_one_tag_links(articles_list: List[ArticleShortInfo], tag_name: str, from_dt: datetime, to_dt: datetime):
+    try:
+        logger.info(f'Get news on tag "{tag_name}"')
+        page_num = get_start_page(tag_name, from_dt)
+        news_page_articles = get_one_page_links(tag_name, page_num)
+        # Пока не выйдем за границу (меньшую) окна
+        while news_page_articles[0].pub_datetime > to_dt:
+            articles_list.extend(filter(lambda elem: from_dt >= elem.pub_datetime >= to_dt, news_page_articles))
+            page_num += 1
+            news_page_articles = get_one_page_links(tag_name, page_num)
+    except Exception as e:
+        raise ParsingErrorException(f'Get all news of one tag by datetime error', parent=e)
+
+
 def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
     articles_list = []
     try:
@@ -188,11 +204,22 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
             from_dt = datetime.now(pytz.UTC)
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
-        for w3_tag in get_news_tags():
-            articles_list.extend(get_all_one_tag_links(w3_tag, from_dt, to_dt))
+
+        threads = list()
+        for news_tag in get_news_tags():
+            t = threading.Thread(target=threading_get_all_one_tag_links,
+                                 args=(articles_list, news_tag, from_dt, to_dt,))
+            threads.append(t)
+            t.start()
+        for index, thread in enumerate(threads):
+            thread.join()
+
+        # for news_tag in get_news_tags():
+        #     articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
     except Exception as e:
         raise ParsingErrorException(f'Get all news by datetime error', parent=e)
-
+    logger.info(f'Escape from get_all_links. Working time is {time.time() - start}')
+    logger.info(f'Articles list length is {len(articles_list)}')
     return articles_list
 
 

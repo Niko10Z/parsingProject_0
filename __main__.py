@@ -1,17 +1,16 @@
 import time
-
+from concurrent.futures import ThreadPoolExecutor
 import src.core.structures as structures
 from src.const import ROOT_DIR, conf_log_filename
 from src.resources import cointelegraph_parser, coindesk_parser
 from src.core.local_storage import set_last_pars_dt, \
                     save_to_disk
-from src.core.database import get_sqlite_session, save_article_to_db, is_parsed, SQLiteWorker
+from src.core.database import SQLiteWorker
 from datetime import datetime
 import os
 import logging
 import pytz
 import argparse
-from typing import List
 
 
 logging.basicConfig(filename=os.path.join(ROOT_DIR, conf_log_filename),
@@ -60,9 +59,11 @@ for url_el in parsing_args.urls:
     else:
         raise structures.ParsingErrorException(f'Parser for url {url_el} not found')
     news_list = my_parser.get_all_links(datetime(2023, 6, 6, 23, 59, tzinfo=pytz.UTC), datetime(2023, 6, 6, 0, 0, tzinfo=pytz.UTC))
-    # session = get_sqlite_session('news_journal.sqlite')
     start = time.time()
-    for item in news_list:
-        handle_article(item)
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        for result in executor.map(handle_article, news_list):
+            pass
+
     logger.info(f'Processed all articles. Working time is {time.time() - start}')
     set_last_pars_dt()

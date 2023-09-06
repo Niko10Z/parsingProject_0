@@ -1,5 +1,5 @@
 import math
-import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 
 import pytz
@@ -197,6 +197,7 @@ def threading_get_all_one_tag_links(articles_list: List[ArticleShortInfo], tag_n
 
 
 def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
+    start = time.time()
     articles_list = []
     try:
         logger.info(f'Get all "coindesk.com" links from {from_dt} to {to_dt}')
@@ -205,14 +206,13 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
         if not to_dt:
             from_dt = datetime(1970, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
 
-        threads = list()
-        for news_tag in get_news_tags():
-            t = threading.Thread(target=threading_get_all_one_tag_links,
-                                 args=(articles_list, news_tag, from_dt, to_dt,))
-            threads.append(t)
-            t.start()
-        for index, thread in enumerate(threads):
-            thread.join()
+        news_tags = get_news_tags()
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for result in executor.map(get_all_one_tag_links,
+                                       news_tags,
+                                       [from_dt] * len(news_tags),
+                                       [to_dt] * len(news_tags)):
+                articles_list.extend(result)
 
         # for news_tag in get_news_tags():
         #     articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))

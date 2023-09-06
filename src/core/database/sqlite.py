@@ -3,6 +3,7 @@ import logging
 from sqlalchemy import create_engine, Connection
 from sqlalchemy import Column, Integer, DateTime, String
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.exc import OperationalError
 from sqlalchemy_utils import database_exists, create_database
 from datetime import datetime
 from src.const import ROOT_DIR
@@ -48,23 +49,6 @@ class ArticleLink(BaseModel):
     parsed_dt = Column(DateTime, nullable=True)
     article_parser_version = Column(Integer)
     article_archive_file_path = Column(String(1000))
-
-
-# Session = sessionmaker()
-# Session.configure(bind=engine)
-
-# session.add()
-# session.add_all()
-# session.new
-# session.dirty
-# session.commit()
-# session.query(User).filter_by(name="ed").first()
-# session.query(User).filter_by(name="ed").all()
-# session.query(User).filter(User.name.in_(["Edwardo", "fakeuser"])).all()
-# session.rollback()
-# for instance in session.query(User).order_by(User.id):
-#     print(instance)
-# Поиграться с сессиями
 
 
 def get_sqlite_session(db_name: str) -> Session:
@@ -138,14 +122,20 @@ class SQLiteWorker:
         try:
             engine = create_engine(f"sqlite:///{ROOT_DIR}{dir_name_database}/{db_name}")
             if not database_exists(engine.url):
-                create_database(engine.url)
-                # В метадате будут схемы всех наследников Base
-                # создаём все схемы(таблицы) в базу ассоциированную с engine
-                metadata.create_all(bind=engine)
-            # Создаём КЛАСС для создания сессий к КОНКРЕТНОЙ БД(фабрику)
+                try:
+                    create_database(engine.url)
+                    metadata.create_all(bind=engine)
+                except OperationalError as e:
+                    logger.warning(e)
+            # if not database_exists(engine.url):
+            #     create_database(engine.url)
+            #     # В метадате будут схемы всех наследников Base
+            #     # создаём все схемы(таблицы) в базу ассоциированную с engine
+            #     metadata.create_all(bind=engine)
+            # Создаём КЛАСС для создания сессий к КОНКРЕТНОЙ БД(фабрику) и вызываем его
             self.session = sessionmaker(bind=engine)()
         except Exception as e:
-            raise DataBaseErrorException(' Creating SQLite worker error', parent=e)
+            raise DataBaseErrorException('Creating SQLite worker error', parent=e)
 
     def is_news_parsed(self, href: str) -> bool:
         try:
@@ -172,5 +162,6 @@ class SQLiteWorker:
                     0,
                     file_full_name))
             self.session.commit()
+            self.session.flush()
         except Exception as e:
             raise DataBaseErrorException(f'Save article to DB error', parent=e)

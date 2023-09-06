@@ -48,6 +48,8 @@ def handle_article(article: structures.ArticleShortInfo) -> None:
 
 
 parser = argparse.ArgumentParser(description='News parsing args')
+parser.add_argument('--from_dt', help='Input from date (yyyy-mm-dd hh:mm:ss)')
+parser.add_argument('--to_dt', help='Input to date (yyyy-mm-dd hh:mm:ss)')
 parser.add_argument('urls', help='Input urls list', nargs='*')
 parsing_args = parser.parse_args()
 for url_el in parsing_args.urls:
@@ -58,7 +60,16 @@ for url_el in parsing_args.urls:
         my_parser = cointelegraph_parser
     else:
         raise structures.ParsingErrorException(f'Parser for url {url_el} not found')
-    news_list = my_parser.get_all_links(datetime(2023, 6, 6, 23, 59, tzinfo=pytz.UTC), datetime(2023, 6, 6, 0, 0, tzinfo=pytz.UTC))
+    if not parsing_args.from_dt:
+        parsing_from_dt = datetime(2023, 6, 6, 23, 59, tzinfo=pytz.UTC)
+    else:
+        parsing_from_dt = pytz.utc.localize(datetime.strptime(parsing_args.from_dt, '%Y-%m-%d %H:%M:%S'))
+    if not parsing_args.to_dt:
+        parsing_to_dt = datetime(2023, 6, 6, 0, 0, tzinfo=pytz.UTC)
+    else:
+        parsing_to_dt = pytz.utc.localize(datetime.strptime(parsing_args.to_dt, '%Y-%m-%d %H:%M:%S'))
+    news_list = my_parser.get_all_links(parsing_from_dt,
+                                        parsing_to_dt)
     start = time.time()
 
     with ThreadPoolExecutor(max_workers=5) as executor:

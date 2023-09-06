@@ -127,11 +127,6 @@ class SQLiteWorker:
                     metadata.create_all(bind=engine)
                 except OperationalError as e:
                     logger.warning(e)
-            # if not database_exists(engine.url):
-            #     create_database(engine.url)
-            #     # В метадате будут схемы всех наследников Base
-            #     # создаём все схемы(таблицы) в базу ассоциированную с engine
-            #     metadata.create_all(bind=engine)
             # Создаём КЛАСС для создания сессий к КОНКРЕТНОЙ БД(фабрику) и вызываем его
             self.session = sessionmaker(bind=engine)()
         except Exception as e:

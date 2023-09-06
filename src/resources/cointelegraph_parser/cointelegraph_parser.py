@@ -2,8 +2,7 @@ import math
 import time
 from typing import List
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytz
 

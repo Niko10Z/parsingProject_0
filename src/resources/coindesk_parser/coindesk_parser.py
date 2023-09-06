@@ -67,17 +67,9 @@ def get_one_page_last_link(news_tag: str, num_page: int) -> ArticleShortInfo | N
         while title.attrs['href'].find('/video/') != -1 and last_index > 0:
             last_index -= 1
             last_news = short_news[last_index]
-            # title = last_news.find('a', class_='card-title')
             title = last_news.select_one('a.card-title')
         if title.attrs['href'].find('/video/') != -1:
-            # raise ParsingErrorException(f'Short news parsing error\n'
-            #                             f'Page URL:https://www.coindesk.com{news_tag}/{num_page}\n'
-            #                             f'Last news is not parseble')
             return None
-        # pub_date = last_news\
-        #     .find('div', class_='timing-data')\
-        #     .find('span', class_='typography__StyledTypography-owin6q-0 fUOSEs')\
-        #     .text
         pub_date = last_news.select_one('div.timing-data > div.ac-publishing-date > div > span').text
         return ArticleShortInfo(
             category=last_news.find('a', class_='category').text,
@@ -214,8 +206,6 @@ def get_all_links(from_dt: datetime, to_dt: datetime) -> List[ArticleShortInfo]:
                                        [to_dt] * len(news_tags)):
                 articles_list.extend(result)
 
-        # for news_tag in get_news_tags():
-        #     articles_list.extend(get_all_one_tag_links(news_tag, from_dt, to_dt))
     except Exception as e:
         raise ParsingErrorException(f'Get all news by datetime error', parent=e)
     logger.info(f'Escape from get_all_links. Working time is {time.time() - start}')
